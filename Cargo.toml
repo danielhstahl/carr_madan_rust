@@ -1,7 +1,12 @@
 [package]
 name = "carr_madan"
 version = "0.1.0"
-authors = ["b0gx3 <daniel.stahl@regions.com>"]
+authors = ["Daniel Stahl <danstahl1138@gmail.com>"]
+homepage = "https://github.com/phillyfan1138/carr_madan_rust"
+repository = "https://github.com/phillyfan1138/carr_madan_rust"
+readme = "README.md"
+license = "MIT"
+description = "A library implementing Carr and Madan's algorithm for option pricing."
 
 [dependencies]
 rustfft = "2.0.0"
@@ -9,3 +14,6 @@ num = "0.2"
 black_scholes = "0.1.2"
 approx = "0.2.0"
 rayon = "1.0.1"
+
+[badges]
+travis-ci = { repository = "phillyfan1138/carr_madan_rust" }
