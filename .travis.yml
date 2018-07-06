@@ -1,32 +1,41 @@
 language: rust
-sudo: false
+
+sudo: required
+
 rust:
-- stable
-- beta
-- nightly
+  - stable
+  - beta
+  - nightly
+
 matrix:
   allow_failures:
-  - rust: nightly
-cache: cargo
-script:
-- cargo clean
-- cargo build
-- cargo test
+    - rust: nightly
 env:
-  global:
-  - RUSTFLAGS="-C link-dead-code"
   - secure: cjTRsZsUbi2RRLepyye4Vj7b63z93RyYn0nLjkZI2KZztuDBYe/5eRyoGrkYWJeA7Ce3XabFH7Qa1ubxC3VNUL36TyP2A8sQeCFXq79/wC0Dmc7kLsOlAcXqnxxbwHGS2bL3u9O4k80OIpOyocSjbZoDe0WkmMCMxsegj+Z5cor+C9ivqBvFozJGuYxFvO3IUisr7U2FkOXRTSx34VJqMOhQZb01IPL/cQL7Vmo7dYvTkeYFNiLG6uB5iQlBzRa7UXQWonjB6AN4GKePkan24le7RsYRsYCpwigrP+7qCtaRc7KTqTnkJOhf8bWEqrv50sKXjYuPqBxMQ7hTO9/6zw0HcwprY347lrZwIjHj4YIocUsvau2ebfopr2Eg06vfzrIb1pQvnT3mWrYepPHLWOxAJg1rU/PVYe4zqBGnnJatYY+i7LbuNVpm6IBgFHpkM6F6Lg5oNRzieNQt3k4CSY0osPjVVhpb1hBfPqVsxEx/bCj+AJc6+jGWoZ5TM3fHLDwbl1HxckgQ+uWT6MFO0a1/kpulpcEtAbO1Eyu9/KWjLDRBxaeZ0hAvtAF8vrfxCXT6okAGREmMk8WSBIGkHyctKeZ3xNzUpCQeVB010Kas/K2zDHf8KvYZQwaUsHJ2Q0qALyvM58kapNC0wUUP56swiGwVOJzn1b0diUbRbwQ=
 addons:
-    apt:
-        packages:
-            - libssl-dev
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - cmake
+      - gcc
+      - binutils-dev
+      - libiberty-dev
 
 after_success: |
-  if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then
-    bash <(curl https://raw.githubusercontent.com/xd009642/tarpaulin/master/travis-install.sh) 
-    cargo tarpaulin --out Xml
-    bash <(curl -s https://codecov.io/bash)
-    cargo doc
-    cargo publish --token "$CARGO_API" --allow-dirty
-  fi
-
+  wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
+  tar xzf master.tar.gz &&
+  cd kcov-master &&
+  mkdir build &&
+  cd build &&
+  cmake .. &&
+  make &&
+  make install DESTDIR=../../kcov-build &&
+  cd ../.. &&
+  rm -rf kcov-master &&
+  for file in target/debug/carr_madan-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
+  bash <(curl -s https://codecov.io/bash) &&
+  echo "Uploaded code coverage"
+  cargo doc
+  cargo publish --token "$CARGO_API" --allow-dirty
