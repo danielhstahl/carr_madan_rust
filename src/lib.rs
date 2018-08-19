@@ -45,12 +45,12 @@ fn get_k_at_index(b:f64, lambda:f64, s0:f64, index:usize)->f64{
 /// Returns iterator which produces strikes
 /// 
 /// # Examples
-/// '''
+/// ```
 /// let eta = 0.04;
 /// let s0 = 50.0;
 /// let num_x = 256;
 /// let strikes = carr_madan::get_strikes(eta, s0, num_x);
-/// '''
+/// ```
 pub fn get_strikes(
     eta:f64, s0:f64, num_x:usize
 )->impl IndexedParallelIterator<Item = f64>{ 
@@ -91,21 +91,26 @@ fn carr_madan_g<T, S>(num_steps:usize, eta:f64, alpha:f64, s0:f64, discount:f64,
 /// Returns call prices over a series of strikes
 /// 
 /// # Examples
-/// '''
+/// ```
+/// extern crate rustfft;
+/// use rustfft::num_complex::Complex;
+/// extern crate carr_madan;
+/// # fn main() {
 /// let alpha = 1.5;
 /// let eta = 0.25;
 /// let num_steps = 256;
 /// let s0 = 50.0;
 /// let r:f64 = 0.05;
 /// let t:f64 = 1.5;
-/// let sigma = 0.4;
+/// let sig = 0.4;
 /// let discount = (-r*t).exp();
 /// let bscf=|u:&Complex<f64>| ((r-sig*sig*0.5)*t*u+sig*sig*t*u*u*0.5).exp(); 
 /// let call_prices = carr_madan::carr_madan_call(
 ///     num_steps, eta, alpha, s0,
 ///     discount, &bscf
 /// ); //first element is strike, second is call price
-/// '''
+/// # }
+/// ```
 pub fn carr_madan_call<T>(
     num_steps:usize, eta:f64, alpha:f64, 
     s0:f64, discount:f64, 
