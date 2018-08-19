@@ -1,3 +1,9 @@
+//! Carr-Madan approach for an option using the underlying's 
+//! characteristic function. Some useful characteristic functions
+//! are provided in the [cf_functions](https://crates.io/crates/cf_functions) repository.
+//! Carr and Madan's approach works well for computing a large number of equidistant 
+//! strikes. [Link to Carr-Madan paper](https://wwwf.imperial.ac.uk/~ajacquie/IC_Num_Methods/IC_Num_Methods_Docs/Literature/CarrMadan.pdf).
+//! 
 extern crate rustfft;
 extern crate num;
 extern crate black_scholes;
@@ -12,10 +18,8 @@ use rustfft::FFT;
 use rustfft::num_complex::Complex;
 use std::f64::consts::PI;
 use rayon::prelude::*;
-//use rayon::par_iter::{IntoParallelIterator, ParallelIterator};
 
 /**
-Used by Carr Madan
 @ada the distance between nodes in the U domain
 @returns the maximum value of the U domain
 */
@@ -23,7 +27,6 @@ fn get_max_k(ada: f64)->f64{
     PI/ada
 }
 /**
-Used by Carr Madan
 @numSteps the number of steps used to discretize the x and u domains
 @returns the distance between nodes in the X domain
 */
@@ -38,22 +41,25 @@ fn get_x(xmin:f64, dx:f64, index:usize)->f64{
 fn get_k_at_index(b:f64, lambda:f64, s0:f64, index:usize)->f64{
     s0*get_x(-b, lambda, index).exp()
 }
-/**
-Used by CarrMadan
-@ada distance between nodes in the U domain
-@S0 stock or asset price
-@numX number of nodes
-@returns vector of strikes  Note that this is different from FSTS and FangOosterlee which prices in terms of a vector of stock or asset prices
-*/
-pub fn get_strikes(ada:f64, s0:f64, numx:usize)->Vec<f64>{
-    let b=get_max_k(ada);
-    let lambda=get_lambda(numx, b);
-    (0..numx).into_par_iter().map(|index|get_k_at_index(b, lambda, s0, index)).collect()
+
+/// Returns iterator which produces strikes
+/// 
+/// # Examples
+/// '''
+/// let eta = 0.04;
+/// let s0 = 50.0;
+/// let num_x = 256;
+/// let strikes = carr_madan::get_strikes(eta, s0, num_x);
+/// '''
+pub fn get_strikes(
+    eta:f64, s0:f64, num_x:usize
+)->impl IndexedParallelIterator<Item = f64>{ 
+    let b=get_max_k(eta);
+    let lambda=get_lambda(num_x, b);
+    (0..num_x).into_par_iter().map(move |index|get_k_at_index(b, lambda, s0, index))
 }
 
-/**
-Used for Carr-Madan call option http://engineering.nyu.edu/files/jcfpub.pdf
-*/
+
 fn call_aug<T>(v:&Complex<f64>, alpha:f64, cf:T)->Complex<f64> 
     where T: Fn(&Complex<f64>)->Complex<f64>
 { //used for Carr-Madan approach...v is typically complex
@@ -61,32 +67,53 @@ fn call_aug<T>(v:&Complex<f64>, alpha:f64, cf:T)->Complex<f64>
     cf(&aug_u)/(alpha*alpha+alpha+v*v+(2.0*alpha+1.0)*v)
 }
 
-fn carr_madan_g<T, S>(num_steps:usize, ada:f64, alpha:f64, s0:f64, discount:f64, m_out:S, aug_cf:T)->Vec<f64> 
+fn carr_madan_g<T, S>(num_steps:usize, eta:f64, alpha:f64, s0:f64, discount:f64, m_out:S, aug_cf:T)->Vec<(f64, f64)> 
     where T: Fn(&Complex<f64>, f64)->Complex<f64>+std::marker::Sync, S:Fn(f64, usize)->f64+std::marker::Sync
 {
-    let b=get_max_k(ada);
+    let b=get_max_k(eta);
     let lambda=get_lambda(num_steps, b);
     let fft = Radix4::new(num_steps, false);
     let mut cmpl:  Vec<Complex<f64> > =(0..num_steps).into_par_iter().map(|index| {
         let pm=if index%2==0 {-1.0} else {1.0};
-        let u=Complex::<f64>::new(0.0, (index as f64)*ada);
-        let aug_u=Complex::<f64>::new(0.0, b*(index as f64)*ada);
+        let u=Complex::<f64>::new(0.0, (index as f64)*eta);
+        let aug_u=Complex::<f64>::new(0.0, b*(index as f64)*eta);
         let f_answer=discount*aug_cf(&u, alpha)*aug_u.exp()*(3.0+pm);
         if index==0 {f_answer*0.5} else {f_answer}
     }).collect();
     let mut output:  Vec<Complex<f64> >=vec![Complex::zero(); num_steps];//why do I have to initialize this?
     fft.process(&mut cmpl, &mut output);
-    output.par_iter().enumerate().map(|(index, &x)| m_out(s0*x.re*(-alpha*get_x(-b, lambda, index)).exp()*ada/(PI*3.0), index)).collect()
+    get_strikes(eta, s0, num_steps)
+        .zip(output.par_iter()
+            .enumerate()
+            .map(|(index, &x)| m_out(s0*x.re*(-alpha*get_x(-b, lambda, index)).exp()*eta/(PI*3.0), index))
+        ).collect()
 }
-
+/// Returns call prices over a series of strikes
+/// 
+/// # Examples
+/// '''
+/// let alpha = 1.5;
+/// let eta = 0.25;
+/// let num_steps = 256;
+/// let s0 = 50.0;
+/// let r:f64 = 0.05;
+/// let t:f64 = 1.5;
+/// let sigma = 0.4;
+/// let discount = (-r*t).exp();
+/// let bscf=|u:&Complex<f64>| ((r-sig*sig*0.5)*t*u+sig*sig*t*u*u*0.5).exp(); 
+/// let call_prices = carr_madan::carr_madan_call(
+///     num_steps, eta, alpha, s0,
+///     discount, &bscf
+/// ); //first element is strike, second is call price
+/// '''
 pub fn carr_madan_call<T>(
-    num_steps:usize, ada:f64, alpha:f64, 
+    num_steps:usize, eta:f64, alpha:f64, 
     s0:f64, discount:f64, 
-    cf:T
-)->Vec<f64>
+    cf:&T
+)->Vec<(f64, f64)>
     where T:Fn(&Complex<f64>)->Complex<f64>+std::marker::Sync
 {
-    carr_madan_g(num_steps, ada, alpha, s0, discount, 
+    carr_madan_g(num_steps, eta, alpha, s0, discount, 
         |x, _| x,
         |&x, alpha| call_aug(&x, alpha, &cf) 
     )
@@ -113,24 +140,24 @@ mod tests {
         let s0=50.0;
         let discount=(-r*t as f64).exp();
         let bscf=|u:&Complex<f64>| ((r-sig*sig*0.5)*t*u+sig*sig*t*u*u*0.5).exp();
-        let numx=(2 as usize).pow(10);
-        let ada=0.25;
+        let num_x=(2 as usize).pow(10);
+        let eta=0.25;
         let alpha=1.5;
         let my_options_price=carr_madan_call(
-            numx,  
-            ada,
+            num_x,  
+            eta,
             alpha,
             s0, 
             discount,
-            bscf
+            &bscf
         );
-        let min_n=numx/4;
-        let max_n=numx-numx/4;
-        let x_domain=get_strikes(ada, s0, numx);
+        let min_n=num_x/4;
+        let max_n=num_x-num_x/4;
         for i in min_n..max_n{
+            let (strike, price)=my_options_price[i];
             assert_abs_diff_eq!(
-                black_scholes::call(s0, x_domain[i], discount, sig),
-                my_options_price[i],
+                black_scholes::call(s0, strike, discount, sig),
+                price,
                 epsilon=0.001
 
             );
