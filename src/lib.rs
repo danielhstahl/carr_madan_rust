@@ -4,13 +4,13 @@
 //! Carr and Madan's approach works well for computing a large number of equidistant 
 //! strikes. [Link to Carr-Madan paper](https://wwwf.imperial.ac.uk/~ajacquie/IC_Num_Methods/IC_Num_Methods_Docs/Literature/CarrMadan.pdf).
 //! 
-extern crate rustfft;
+/*extern crate rustfft;
 extern crate num;
 extern crate black_scholes;
 extern crate rayon;
 #[macro_use]
 #[cfg(test)]
-extern crate approx;
+extern crate approx;*/
 
 use num::traits::{Zero};
 use rustfft::algorithm::Radix4;
@@ -127,6 +127,7 @@ pub fn carr_madan_call<T>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::*;
     #[test]
     fn get_x_returns_correctly() {
         let x=get_x(-5.0, 1.0, 3);
