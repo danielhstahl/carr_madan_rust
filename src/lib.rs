@@ -1,9 +1,9 @@
-//! Carr-Madan approach for an option using the underlying's 
+//! Carr-Madan approach for an option using the underlying's
 //! characteristic function. Some useful characteristic functions
 //! are provided in the [cf_functions](https://crates.io/crates/cf_functions) repository.
-//! Carr and Madan's approach works well for computing a large number of equidistant 
+//! Carr and Madan's approach works well for computing a large number of equidistant
 //! strikes. [Link to Carr-Madan paper](https://wwwf.imperial.ac.uk/~ajacquie/IC_Num_Methods/IC_Num_Methods_Docs/Literature/CarrMadan.pdf).
-//! 
+//!
 /*extern crate rustfft;
 extern crate num;
 extern crate black_scholes;
@@ -43,7 +43,7 @@ fn get_k_at_index(b:f64, lambda:f64, s0:f64, index:usize)->f64{
 }
 
 /// Returns iterator which produces strikes
-/// 
+///
 /// # Examples
 /// ```
 /// let eta = 0.04;
@@ -53,21 +53,21 @@ fn get_k_at_index(b:f64, lambda:f64, s0:f64, index:usize)->f64{
 /// ```
 pub fn get_strikes(
     eta:f64, s0:f64, num_x:usize
-)->impl IndexedParallelIterator<Item = f64>{ 
+)->impl IndexedParallelIterator<Item = f64>{
     let b=get_max_k(eta);
     let lambda=get_lambda(num_x, b);
     (0..num_x).into_par_iter().map(move |index|get_k_at_index(b, lambda, s0, index))
 }
 
 
-fn call_aug<T>(v:&Complex<f64>, alpha:f64, cf:T)->Complex<f64> 
+fn call_aug<T>(v:&Complex<f64>, alpha:f64, cf:T)->Complex<f64>
     where T: Fn(&Complex<f64>)->Complex<f64>
 { //used for Carr-Madan approach...v is typically complex
     let aug_u=v+(alpha+1.0);
     cf(&aug_u)/(alpha*alpha+alpha+v*v+(2.0*alpha+1.0)*v)
 }
 
-fn carr_madan_g<T, S>(num_steps:usize, eta:f64, alpha:f64, s0:f64, discount:f64, m_out:S, aug_cf:T)->Vec<(f64, f64)> 
+fn carr_madan_g<T, S>(num_steps:usize, eta:f64, alpha:f64, s0:f64, discount:f64, m_out:S, aug_cf:T)->Vec<(f64, f64)>
     where T: Fn(&Complex<f64>, f64)->Complex<f64>+std::marker::Sync, S:Fn(f64, usize)->f64+std::marker::Sync
 {
     let b=get_max_k(eta);
@@ -89,7 +89,7 @@ fn carr_madan_g<T, S>(num_steps:usize, eta:f64, alpha:f64, s0:f64, discount:f64,
         ).collect()
 }
 /// Returns call prices over a series of strikes
-/// 
+///
 /// # Examples
 /// ```
 /// extern crate rustfft;
@@ -104,23 +104,23 @@ fn carr_madan_g<T, S>(num_steps:usize, eta:f64, alpha:f64, s0:f64, discount:f64,
 /// let t:f64 = 1.5;
 /// let sig = 0.4;
 /// let discount = (-r*t).exp();
-/// let bscf=|u:&Complex<f64>| ((r-sig*sig*0.5)*t*u+sig*sig*t*u*u*0.5).exp(); 
-/// let call_prices = carr_madan::carr_madan_call(
+/// let bscf=|u:&Complex<f64>| ((r-sig*sig*0.5)*t*u+sig*sig*t*u*u*0.5).exp();
+/// let call_prices = carr_madan::call_price(
 ///     num_steps, eta, alpha, s0,
 ///     discount, &bscf
 /// ); //first element is strike, second is call price
 /// # }
 /// ```
-pub fn carr_madan_call<T>(
-    num_steps:usize, eta:f64, alpha:f64, 
-    s0:f64, discount:f64, 
+pub fn call_price<T>(
+    num_steps:usize, eta:f64, alpha:f64,
+    s0:f64, discount:f64,
     cf:&T
 )->Vec<(f64, f64)>
     where T:Fn(&Complex<f64>)->Complex<f64>+std::marker::Sync
 {
-    carr_madan_g(num_steps, eta, alpha, s0, discount, 
+    carr_madan_g(num_steps, eta, alpha, s0, discount,
         |x, _| x,
-        |&x, alpha| call_aug(&x, alpha, &cf) 
+        |&x, alpha| call_aug(&x, alpha, &cf)
     )
 }
 
@@ -149,11 +149,11 @@ mod tests {
         let num_x=(2 as usize).pow(10);
         let eta=0.25;
         let alpha=1.5;
-        let my_options_price=carr_madan_call(
-            num_x,  
+        let my_options_price=call_price(
+            num_x,
             eta,
             alpha,
-            s0, 
+            s0,
             discount,
             &bscf
         );
@@ -162,10 +162,9 @@ mod tests {
         for i in min_n..max_n{
             let (strike, price)=my_options_price[i];
             assert_abs_diff_eq!(
-                black_scholes::call(s0, strike, discount, sig),
+                black_scholes::call(s0, strike, r, sig, t),
                 price,
                 epsilon=0.001
-
             );
         }
     }

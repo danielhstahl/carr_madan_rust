@@ -1,35 +1,44 @@
 language: rust
-
 sudo: required
-
-rust:
-  - stable
-  - beta
-  - nightly
-
-env:
-  - secure: cjTRsZsUbi2RRLepyye4Vj7b63z93RyYn0nLjkZI2KZztuDBYe/5eRyoGrkYWJeA7Ce3XabFH7Qa1ubxC3VNUL36TyP2A8sQeCFXq79/wC0Dmc7kLsOlAcXqnxxbwHGS2bL3u9O4k80OIpOyocSjbZoDe0WkmMCMxsegj+Z5cor+C9ivqBvFozJGuYxFvO3IUisr7U2FkOXRTSx34VJqMOhQZb01IPL/cQL7Vmo7dYvTkeYFNiLG6uB5iQlBzRa7UXQWonjB6AN4GKePkan24le7RsYRsYCpwigrP+7qCtaRc7KTqTnkJOhf8bWEqrv50sKXjYuPqBxMQ7hTO9/6zw0HcwprY347lrZwIjHj4YIocUsvau2ebfopr2Eg06vfzrIb1pQvnT3mWrYepPHLWOxAJg1rU/PVYe4zqBGnnJatYY+i7LbuNVpm6IBgFHpkM6F6Lg5oNRzieNQt3k4CSY0osPjVVhpb1hBfPqVsxEx/bCj+AJc6+jGWoZ5TM3fHLDwbl1HxckgQ+uWT6MFO0a1/kpulpcEtAbO1Eyu9/KWjLDRBxaeZ0hAvtAF8vrfxCXT6okAGREmMk8WSBIGkHyctKeZ3xNzUpCQeVB010Kas/K2zDHf8KvYZQwaUsHJ2Q0qALyvM58kapNC0wUUP56swiGwVOJzn1b0diUbRbwQ=
-
 addons:
   apt:
     packages:
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
-      - cmake
-      - gcc
-      - binutils-dev
-      - libiberty-dev
-
+    - libcurl4-openssl-dev
+    - libelf-dev
+    - libdw-dev
+    - cmake
+    - gcc
+    - binutils-dev
+    - libiberty-dev
+    - gnuplot
 before_cache: |
   if [ "$TRAVIS_RUST_VERSION" = "nightly" ]; then
     RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin
   fi
-
 after_success: |
   if [ "$TRAVIS_RUST_VERSION" = "nightly" ]; then
     cargo tarpaulin --out Xml
     bash <(curl -s https://codecov.io/bash)
+  fi
+  if [ "$TRAVIS_RUST_VERSION" = stable ]; then
+    cargo bench
     cargo doc
     cargo publish --token "$CARGO_API" --allow-dirty
   fi
+matrix:
+  include:
+  - rust: stable
+    env:
+    - secure: cjTRsZsUbi2RRLepyye4Vj7b63z93RyYn0nLjkZI2KZztuDBYe/5eRyoGrkYWJeA7Ce3XabFH7Qa1ubxC3VNUL36TyP2A8sQeCFXq79/wC0Dmc7kLsOlAcXqnxxbwHGS2bL3u9O4k80OIpOyocSjbZoDe0WkmMCMxsegj+Z5cor+C9ivqBvFozJGuYxFvO3IUisr7U2FkOXRTSx34VJqMOhQZb01IPL/cQL7Vmo7dYvTkeYFNiLG6uB5iQlBzRa7UXQWonjB6AN4GKePkan24le7RsYRsYCpwigrP+7qCtaRc7KTqTnkJOhf8bWEqrv50sKXjYuPqBxMQ7hTO9/6zw0HcwprY347lrZwIjHj4YIocUsvau2ebfopr2Eg06vfzrIb1pQvnT3mWrYepPHLWOxAJg1rU/PVYe4zqBGnnJatYY+i7LbuNVpm6IBgFHpkM6F6Lg5oNRzieNQt3k4CSY0osPjVVhpb1hBfPqVsxEx/bCj+AJc6+jGWoZ5TM3fHLDwbl1HxckgQ+uWT6MFO0a1/kpulpcEtAbO1Eyu9/KWjLDRBxaeZ0hAvtAF8vrfxCXT6okAGREmMk8WSBIGkHyctKeZ3xNzUpCQeVB010Kas/K2zDHf8KvYZQwaUsHJ2Q0qALyvM58kapNC0wUUP56swiGwVOJzn1b0diUbRbwQ=
+    - secure: r3A0GCj4i7l8tjWzlJspfZDnJ6yQTKaBUGC8SEDp5eqrF+YQdB633os0fZl/UbHTG4pHBzdIM8rXQyuJbWu9DjIRaWdW3EqetOOEHM5EHXz8y2Sdl4LcnW4LkkkAQFm6DUfePQPUTKqKTOA6BbAR7axJIJVB8WtYc8tUf+NefDfxkAu5VZL1NGxRYca3yjKsuMauYdl6iqH5j6Ax07ihOzsoS+dDHuMGVCRFKSs9I4KR2Yccgl7Vv0cYohq2eJkHsOsQPiDy/j1p+rM066ZpmhkFLUQQehN89ahz21nMlYXy5W/rO+7nXJJB58q215roMRXOPaU8fEP22qMFXWZGKw2Cct0psqVd3KO+1qoy7VdQ/PdRMulPNF9APEMOxP2GeWDvy7fJ15jklFMgu1RryD1VfIqiI97e8748De6eb6T5vD+DaUv5KtdWkTISkWC9Qm5j/4WrCoaG35erb4Kw2Igh35ac6nAWaVy6QIwU49vkL/Vcyy6A5dIdaYzHHMaIF660Kgjhirc2RuCZTPXujlezrA1EV6ST6Ilowbkra2HQQh+wIO3Ouo+bCqenm2eMp8q18BR0uO83zvHI8X5Vs3r33QL2cJb2LrirRVugbVO0A1ewOg/TdCqy8IPIIK4i+ex5k8nTX4gCro40GVeV4fBZUBKxkUDhmxSwIABMAw4=
+  - rust: nightly
+  - rust: beta
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: "$GITHUB_TOKEN"
+  keep_history: true
+  local_dir: target/criterion
+  on:
+    branch: master
+    rust: stable
