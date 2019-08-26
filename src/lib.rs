@@ -105,7 +105,7 @@ fn carr_madan_g<T, S>(num_steps:usize, eta:f64, alpha:f64, s0:f64, discount:f64,
 /// let sig = 0.4;
 /// let discount = (-r*t).exp();
 /// let bscf=|u:&Complex<f64>| ((r-sig*sig*0.5)*t*u+sig*sig*t*u*u*0.5).exp();
-/// let call_prices = carr_madan::call(
+/// let call_prices = carr_madan::call_price(
 ///     num_steps, eta, alpha, s0,
 ///     discount, &bscf
 /// ); //first element is strike, second is call price
@@ -162,10 +162,9 @@ mod tests {
         for i in min_n..max_n{
             let (strike, price)=my_options_price[i];
             assert_abs_diff_eq!(
-                black_scholes::call(s0, strike, r, t, sig),
+                black_scholes::call(s0, strike, r, sig, t),
                 price,
                 epsilon=0.001
-
             );
         }
     }
