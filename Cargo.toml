@@ -2,8 +2,8 @@
 name = "carr_madan"
 version = "0.4.0"
 authors = ["Daniel Stahl <danstahl1138@gmail.com>"]
-homepage = "https://github.com/phillyfan1138/carr_madan_rust"
-repository = "https://github.com/phillyfan1138/carr_madan_rust"
+homepage = "https://github.com/danielhstahl/carr_madan_rust"
+repository = "https://github.com/danielhstahl/carr_madan_rust"
 readme = "README.md"
 license = "MIT"
 description = "A library implementing Carr and Madan's algorithm for option pricing."
@@ -18,13 +18,10 @@ rayon = "1.0.1"
 approx = "0.2.0"
 black_scholes = "0.5.0"
 fang_oost_option = "0.28.0"
-criterion = "0.2"
+criterion = "0.3"
 num-complex = "0.2"
 
 [[bench]]
 name = "bench"
 harness = false
 
-
-[badges]
-travis-ci = { repository = "phillyfan1138/carr_madan_rust" }
